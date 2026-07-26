@@ -30,7 +30,13 @@ cd "$SCRIPT_DIR"
 # with a direct pointer (`void *`), not `void **`, despite what the
 # public header declares. This is fixed in commit c89bab0b4 (SQLCipher ≥ 4.10).
 # ctx_free.patch backports this change to 4.10.0 in the amalgamation.
-patch < ctx_free.patch
+patch -d "$SCRIPT_DIR/sqlcipher" < "$SCRIPT_DIR/sqlcipher/ctx_free.patch"
+# SQLCipher >= 4.6 tears down its global state (private heap, providers) via
+# atexit/static destructors at process exit. This races with threads that are
+# still closing connections when the process exits (e.g. sqlx worker threads)
+# and crashes in sqlite3FreeCodecArg. omit_exit_cleanup.patch makes the
+# teardown handlers conditional; build.rs defines SQLCIPHER_OMIT_EXIT_CLEANUP.
+patch -d "$SCRIPT_DIR/sqlcipher" < "$SCRIPT_DIR/sqlcipher/omit_exit_cleanup.patch"
 rm -rf "v${SQLCIPHER_VERSION}.tar.gz" sqlcipher.src
 
 # Regenerate bindgen file for sqlcipher

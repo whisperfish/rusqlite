@@ -108701,6 +108701,13 @@ sqlite3_mutex* sqlcipher_mutex(int mutex) {
   return sqlcipher_static_mutex[mutex];
 }
 
+/* SQLCIPHER_OMIT_EXIT_CLEANUP disables the automatic teardown of SQLCipher's
+ * global state (private heap, provider list, mutexes) at process exit. The
+ * teardown is unsafe when other threads may still be closing database
+ * connections while the process exits: it wipes and frees the private heap
+ * that holds live codec contexts, causing use-after-free crashes in
+ * sqlite3FreeCodecArg. Leaking the global state at exit is harmless. */
+#ifndef SQLCIPHER_OMIT_EXIT_CLEANUP
 static void sqlcipher_atexit(void) {
   sqlcipher_log(SQLCIPHER_LOG_DEBUG, SQLCIPHER_LOG_CORE, "%s: calling sqlcipher_extra_shutdown()", __func__);
   sqlcipher_extra_shutdown();
@@ -108735,6 +108742,7 @@ static void sqlcipher_fini(void) {
 #else
 static void (*const sqlcipher_fini_func)(void) __attribute__((used, section(".fini_array"))) = sqlcipher_fini;
 #endif
+#endif /* SQLCIPHER_OMIT_EXIT_CLEANUP */
 
 static void sqlcipher_exportFunc(sqlite3_context*, int, sqlite3_value**);
 
@@ -108759,11 +108767,13 @@ int sqlcipher_extra_init(const char* arg) {
     return SQLITE_OK;
   }
 
+#ifndef SQLCIPHER_OMIT_EXIT_CLEANUP
   /* only register cleanup handlers once per process */
   if(!sqlcipher_cleanup) {
     atexit(sqlcipher_atexit);
     sqlcipher_cleanup = 1;
   }
+#endif
 
 #ifndef SQLCIPHER_OMIT_DEFAULT_LOGGING
   /* when sqlcipher is first activated, set a default log target and level of WARN if the

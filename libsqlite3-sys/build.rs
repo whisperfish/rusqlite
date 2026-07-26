@@ -149,6 +149,11 @@ mod build_bundled {
                 .flag("-DSQLITE_TEMP_STORE=2")
                 .flag("-DSQLITE_EXTRA_INIT=sqlcipher_extra_init")
                 .flag("-DSQLITE_EXTRA_SHUTDOWN=sqlcipher_extra_shutdown")
+                // Don't tear down SQLCipher's global state (private heap,
+                // providers) via atexit/static destructors: it races with
+                // threads still closing connections while the process exits
+                // and crashes in sqlite3FreeCodecArg.
+                .flag("-DSQLCIPHER_OMIT_EXIT_CLEANUP")
                 .flag("-DHAVE_STDINT_H=1");
 
             let target = env::var("TARGET").unwrap();
