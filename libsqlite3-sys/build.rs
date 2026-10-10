@@ -168,7 +168,10 @@ mod build_bundled {
                 }
                 (lib_dir, inc_dir) => match find_openssl_dir(&host, &target) {
                     None => {
-                        if is_windows && !cfg!(feature = "bundled-sqlcipher-vendored-openssl") {
+                        if is_windows
+                            && !cfg!(feature = "bundled-sqlcipher-vendored-openssl")
+                            && !cfg!(feature = "bundled-sqlcipher-custom-crypto")
+                        {
                             panic!("Missing environment variable OPENSSL_DIR or OPENSSL_DIR is not set")
                         } else {
                             (vec![PathBuf::new()], PathBuf::new())
